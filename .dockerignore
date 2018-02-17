@@ -1,0 +1,4 @@
+.git
+pgadmin4/*
+!pgadmin4/requirements.txt
+!pgadmin4/web
