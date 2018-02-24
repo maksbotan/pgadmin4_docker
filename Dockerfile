@@ -9,29 +9,21 @@ RUN yarn install --cache-folder ./ycache --verbose && \
     yarn run bundle && \
     rm -rf ./ycache ./pgadmin/static/js/generated/.cache
 
-# Then compile python C extensions into wheels to avoid having build deps in main container
-FROM python:3.6-alpine3.7 AS python-builder
-
-COPY ./compile_python.sh /build/
-WORKDIR /build
-RUN apk add --no-cache postgresql-libs postgresql-dev build-base
-RUN set -ex && \
-    ./compile_python.sh psycopg2 && \
-    ./compile_python.sh pycrypto
-
-# Then install everything and set up entrypoint
+# Then install backend, copy static files and set up entrypoint
 # Need alpine3.7 to get pg_dump and friends in postgresql-client package
 FROM python:3.6-alpine3.7
 
 RUN pip --no-cache-dir install waitress
 RUN apk add --no-cache postgresql-client postgresql-libs
 
-COPY --from=python-builder /build/wheels/*.whl /pgadmin4/wheels/
-COPY --from=node-builder /pgadmin4/web/pgadmin/static/js/generated/ /pgadmin4/pgadmin/static/js/generated/
-
+# Install build-dependencies, build & install C extensions and purge deps in one RUN step
+# so that deps do not increase the size of resulting image by remaining in layers
 RUN set -ex && \
-    pip install /pgadmin4/wheels/*.whl && \
-    rm -rf /pgadmin4/wheels
+    apk add --no-cache --virtual build-deps build-base postgresql-dev && \
+    pip install --no-cache-dir psycopg2 pycrypto && \
+    apk del --no-cache build-deps
+
+COPY --from=node-builder /pgadmin4/web/pgadmin/static/js/generated/ /pgadmin4/pgadmin/static/js/generated/
 
 COPY ./pgadmin4/web /pgadmin4
 COPY ./pgadmin4/requirements.txt /pgadmin4
