@@ -26,7 +26,7 @@ RUN LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 make -C /pgadmin4/docs/en_US -f Makefile
 # Need alpine3.7 to get pg_dump and friends in postgresql-client package
 FROM python:3.6-alpine3.7
 
-RUN pip --no-cache-dir install waitress
+RUN pip --no-cache-dir install gunicorn
 RUN apk add --no-cache postgresql-client postgresql-libs
 
 # Install build-dependencies, build & install C extensions and purge deps in one RUN step
@@ -52,7 +52,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Precompile and optimize python code to save time and space on startup
 RUN python -O -m compileall /pgadmin4
 
+COPY ./entrypoint.sh /entrypoint.sh
+
 VOLUME /var/lib/pgadmin
 EXPOSE 8080
 
-ENTRYPOINT ["python", "/pgadmin4/run_pgadmin.py"]
+ENTRYPOINT ["/entrypoint.sh"]
