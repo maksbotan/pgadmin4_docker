@@ -2,3 +2,4 @@
 pgadmin4/*
 !pgadmin4/requirements.txt
 !pgadmin4/web
+!pgadmin4/docs

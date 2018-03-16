@@ -9,6 +9,19 @@ RUN yarn install --cache-folder ./ycache --verbose && \
     yarn run bundle && \
     rm -rf ./ycache ./pgadmin/static/js/generated/.cache
 
+# Build Sphinx documentation in separate container
+FROM python:3.6-alpine3.7 as docs-builder
+
+# Install only dependencies absolutely required for documentation building
+RUN apk add --no-cache make
+RUN pip install --no-cache-dir \
+    sphinx flask_babel flask_security flask_paranoid python-dateutil flask_sqlalchemy \
+    flask_gravatar simplejson
+
+COPY ./pgadmin4/ /pgadmin4
+
+RUN LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 make -C /pgadmin4/docs/en_US -f Makefile.sphinx html
+
 # Then install backend, copy static files and set up entrypoint
 # Need alpine3.7 to get pg_dump and friends in postgresql-client package
 FROM python:3.6-alpine3.7
@@ -24,6 +37,7 @@ RUN set -ex && \
     apk del --no-cache build-deps
 
 COPY --from=node-builder /pgadmin4/web/pgadmin/static/js/generated/ /pgadmin4/pgadmin/static/js/generated/
+COPY --from=docs-builder /pgadmin4/docs/en_US/_build/html/ /pgadmin4/docs/
 
 COPY ./pgadmin4/web /pgadmin4
 COPY ./pgadmin4/requirements.txt /pgadmin4
