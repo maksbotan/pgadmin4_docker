@@ -12,9 +12,10 @@ if [ ! -f /var/lib/pgadmin/pgadmin4.db ]; then
 fi
 
 # NOTE: currently pgadmin can run only with 1 worker due to sessions implementation
+# Using --threads to have multi-threaded single-process worker
 
 if [ ! -z ${PGADMIN_ENABLE_TLS} ]; then
-    exec gunicorn --bind 0.0.0.0:8080 -w 1 --access-logfile - --keyfile /certs/server.key --certfile /certs/server.cert run_pgadmin:app
+    exec gunicorn --bind 0.0.0.0:8080 -w 1 --threads ${GUNICORN_THREADS:-4} --access-logfile - --keyfile /certs/server.key --certfile /certs/server.cert run_pgadmin:app
 else
-    exec gunicorn --bind 0.0.0.0:8080 -w 1 --access-logfile - run_pgadmin:app
+    exec gunicorn --bind 0.0.0.0:8080 -w 1 --threads ${GUNICORN_THREADS:-4} --access-logfile - run_pgadmin:app
 fi
